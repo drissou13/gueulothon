@@ -1,19 +1,9 @@
 <!DOCTYPE html>
-<html lang="en" >
-<head>
-  <meta charset="UTF-8">
-  <title>gueulothon</title>
-  <link rel="stylesheet" href="./style.css">
-
-</head>
-<body>
-<!-- partial:index.partial.html -->
-<!DOCTYPE html>
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Gueuloton</title>
+  <title>Gueuloton avec autoplay</title>
   <style>
     body {
       background: linear-gradient(to bottom, #5c1a1a, #2e0d0d);
@@ -23,7 +13,8 @@
       flex-direction: column;
       align-items: center;
       min-height: 100vh;
-      padding-top: 2rem;
+      padding: 2rem 1rem;
+      text-align: center;
     }
     h1 {
       font-size: 2.5rem;
@@ -33,7 +24,6 @@
     p {
       margin-bottom: 1.5rem;
       font-size: 1.2rem;
-      text-align: center;
       max-width: 600px;
     }
     video, canvas {
@@ -55,7 +45,6 @@
     }
     #photo {
       margin-top: 2rem;
-      text-align: center;
     }
     #photo img {
       border: 6px solid #fff;
@@ -63,7 +52,6 @@
       box-shadow: 0 0 15px rgba(0,0,0,0.6);
       width: 320px;
       height: auto;
-      background: #000;
     }
     #caption {
       margin-top: 0.5rem;
@@ -85,26 +73,50 @@
     button:hover {
       background-color: #eee;
     }
+    #controls {
+      display: none;
+    }
     audio {
       display: none;
+    }
+    /* Décibelmètre */
+    #decibelMeter {
+      width: 320px;
+      height: 20px;
+      background: #333;
+      border: 2px solid #aaa;
+      border-radius: 10px;
+      margin-top: 1rem;
+      overflow: hidden;
+      position: relative;
+    }
+    #decibelLevel {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(to right, #00ff00, #ffff00, #ff0000);
+      transition: width 0.1s ease;
     }
   </style>
 </head>
 <body>
 
   <h1>📸 Gueuloton</h1>
-  <p>Gueule bien fort et la photo se déclenche toute seule !</p>
+  <p>Appuie sur le bouton, gueule bien fort... et le Gueuloton s’occupe du reste !</p>
 
-  <video id="video" autoplay muted></video>
-  <canvas id="canvas" width="320" height="240" style="display:none;"></canvas>
+  <button id="startBtn" style="display:none;">▶️ Appuyez pour démarrer</button>
 
-  <div id="status">Chargement...</div>
-  <div id="photo"></div>
+  <div id="controls">
+    <video id="video" autoplay muted playsinline></video>
+    <div id="decibelMeter"><div id="decibelLevel"></div></div>
+    <canvas id="canvas" width="320" height="240" style="display:none;"></canvas>
+    <div id="status">Chargement...</div>
+    <div id="photo"></div>
+    <button id="downloadBtn" style="display:none;">📥 Télécharger la photo</button>
+    <button id="resetBtn" style="display:none;">🔄 Recommencer</button>
+  </div>
 
-  <button id="downloadBtn" style="display:none;">📥 Télécharger la photo</button>
-  <button id="resetBtn" style="display:none;">🔄 Recommencer</button>
+  <audio id="voiceIntro" src="son/voix-vieux-70s.mp3" preload="auto" playsinline></audio>
 
-  <audio id="voiceIntro" src="son/gueulothon.mp3" preload="auto">autoplay muted playsinline</audio>
   <script>
     const video = document.getElementById('video');
     const canvas = document.getElementById('canvas');
@@ -114,15 +126,36 @@
     const audio = document.getElementById('voiceIntro');
     const downloadBtn = document.getElementById('downloadBtn');
     const resetBtn = document.getElementById('resetBtn');
+    const startBtn = document.getElementById('startBtn');
+    const controls = document.getElementById('controls');
+    const decibelLevel = document.getElementById('decibelLevel');
 
     let audioContext, analyser, microphone, dataArray;
     let canTakePhoto = true;
 
-    window.onload = () => {
-      audio.play().catch(() => {
-        console.log("Lecture automatique bloquée.");
-      });
-      setup();
+    // Essaie de lancer l'audio + webcam au chargement
+    window.onload = async () => {
+      try {
+        await audio.play();
+        // Audio lancé, on peut démarrer caméra et détection
+        setup();
+        controls.style.display = 'block';
+      } catch(e) {
+        // Audio bloqué : affiche bouton démarrage manuel
+        startBtn.style.display = 'inline-block';
+        status.textContent = "Cliquez sur 'Appuyez pour démarrer' pour lancer";
+      }
+    };
+
+    startBtn.onclick = async () => {
+      try {
+        await audio.play();
+        startBtn.style.display = 'none';
+        controls.style.display = 'block';
+        setup();
+      } catch(e) {
+        alert("Impossible de lancer l'audio et la caméra");
+      }
     };
 
     async function setup() {
@@ -136,8 +169,7 @@
         analyser.fftSize = 256;
         microphone.connect(analyser);
 
-        const bufferLength = analyser.frequencyBinCount;
-        dataArray = new Uint8Array(bufferLength);
+        dataArray = new Uint8Array(analyser.frequencyBinCount);
 
         status.textContent = "En attente de gueulements...";
         listenSound();
@@ -149,11 +181,13 @@
 
     function listenSound() {
       analyser.getByteFrequencyData(dataArray);
-      let values = 0;
-      for (let i = 0; i < dataArray.length; i++) values += dataArray[i];
+      let values = dataArray.reduce((a, b) => a + b, 0);
       let average = values / dataArray.length;
-      const threshold = 70;
 
+      // Mise à jour du décibelmètre visuel
+      decibelLevel.style.width = Math.min(average * 1.5, 100) + "%";
+
+      const threshold = 70;
       if (average > threshold && canTakePhoto) {
         canTakePhoto = false;
         status.textContent = "Gueulage détecté ! Photo prise.";
@@ -171,7 +205,7 @@
       const imgData = canvas.toDataURL('image/png');
 
       photoDiv.innerHTML = `
-        <img src="${imgData}" alt="Photo prise lors du gueulage" />
+        <img src="${imgData}" alt="Photo gueulée" />
         <div id="caption">merci @dbprod13</div>
       `;
       downloadBtn.style.display = 'inline-block';
@@ -193,9 +227,5 @@
     };
   </script>
 
-</body>
-</html>
-<!-- partial -->
-  
 </body>
 </html>
