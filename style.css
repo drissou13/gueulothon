@@ -1,0 +1,58 @@
+body {
+  background: linear-gradient(to bottom, #5c1a1a, #2e0d0d);
+  color: #fff;
+  font-family: 'Courier New', monospace;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: start;
+  min-height: 100vh;
+  padding-top: 2rem;
+}
+
+h1 {
+  font-size: 2.5rem;
+  margin-bottom: 0.5rem;
+  text-shadow: 2px 2px 4px #000;
+}
+
+p {
+  margin-bottom: 2rem;
+  font-size: 1.2rem;
+}
+
+video, canvas {
+  border: 8px solid #ccc;
+  border-radius: 12px;
+  box-shadow: 0 0 20px rgba(0,0,0,0.7);
+  width: 320px;
+  height: 240px;
+  background: black;
+}
+
+#status {
+  margin-top: 1rem;
+  font-weight: bold;
+  background: #fff;
+  color: #5c1a1a;
+  padding: 0.5rem 1rem;
+  border-radius: 10px;
+  box-shadow: 0 0 8px rgba(0,0,0,0.4);
+}
+
+#photo {
+  margin-top: 1.5rem;
+}
+
+#photo img {
+  border: 6px solid #fff;
+  border-radius: 8px;
+  box-shadow: 0 0 15px rgba(0,0,0,0.6);
+  width: 320px;
+  height: auto;
+  background: #000;
+}
+
+audio {
+  display: none;
+}
